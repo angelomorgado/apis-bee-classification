@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
+import matplotlib.pyplot as plt
 
 import torch
 import torch.nn as nn
@@ -39,15 +40,6 @@ def remove_outliers(data, threshold=0.5):
     # Return the new data
     return pd.concat([data_positives, data_negatives])
 
-def binary_acc(y_pred, y_test):
-    y_pred_tag = torch.round(torch.sigmoid(y_pred))
-
-    correct_results_sum = (y_pred_tag == y_test).sum().float()
-    acc = correct_results_sum/y_test.shape[0]
-    acc = torch.round(acc * 100)
-    
-    return acc
-
 if __name__ == "__main__":
     # Load dataset from csv file
     columnNames = ['mntcm', 'mxtwm', 'rfseas', 'tann', 'latitude', 'longitude', 'y']
@@ -75,6 +67,7 @@ if __name__ == "__main__":
     X_train = torch.FloatTensor(X_train)
     X_test = torch.FloatTensor(X_test)
     y_train = torch.FloatTensor(y_train.values)
+    y_test = torch.FloatTensor(y_test.values)
 
     # Create datasets
     train_dataset = BeeDataset_train(X_train, y_train)
@@ -91,27 +84,35 @@ if __name__ == "__main__":
     criterion = nn.BCELoss()
     optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
     
+    losses = []
+
     # Train the model
     model.train()
-    for epoch in range(1, EPOCHS + 1):
-        epoch_loss = 0
-        epoch_acc = 0
+    for epoch in range(EPOCHS):
+        for i, data in enumerate(train_loader):
+            X_train, y_train = data
+            X_train, y_train = X_train.to(device), y_train.to(device)
 
-        for X_batch, y_batch in train_loader:
-            X_batch, y_batch = X_batch.to(device), y_batch.to(device)
+            # Forward pass
+            y_pred = model(X_train)
+            loss = criterion(y_pred, y_train.unsqueeze(1))
+
+            # Backward pass
             optimizer.zero_grad()
-
-            y_pred = model(X_batch)
-
-            loss = criterion(y_pred, y_batch.unsqueeze(1))
-            acc = binary_acc(y_pred, y_batch.unsqueeze(1))
-
             loss.backward()
             optimizer.step()
 
-            epoch_loss += loss.item()
-            epoch_acc += acc.item()
-        
-        print(f'Epoch {epoch+0:03}: | Loss: {epoch_loss/len(train_loader):.5f} | Acc: {epoch_acc/len(train_loader):.3f}')
-        
-        
+        losses.append(loss.item())
+
+        # Print loss every 10 epochs
+        if (epoch+1) % 10 == 0:
+            print(f'Epoch {epoch+1}/{EPOCHS} Loss: {loss.item():.4f}')
+    
+    # Draw the loss graph
+    '''plt.plot(range(EPOCHS), losses)
+    plt.ylabel('Loss')
+    plt.xlabel('epoch')
+    plt.savefig('loss.png')'''
+
+    # Save the model
+    #torch.save(model.state_dict(), 'nn_model.pth')
