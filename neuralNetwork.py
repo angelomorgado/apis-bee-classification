@@ -3,12 +3,18 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
-# Classifiers
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.svm import SVC
-from sklearn.linear_model import LogisticRegression
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data import Dataset, DataLoader
+
+from classes import BeeDataset_train, BeeDataset_test, NN
+
+#======================== GLOBAL VARIABLES ============================================================
+EPOCHS = 50
+BATCH_SIZE = 10
+LEARNING_RATE = 0.001 # 10*e^-4
+#====================================================================================================
 
 # Remove all outliers that have a value of 0 and are too close to the ones that have a value of 1
 def remove_outliers(data, threshold=0.5):
@@ -56,24 +62,39 @@ if __name__ == "__main__":
     scaler = StandardScaler()
     X_train = scaler.fit_transform(X_train)
     X_test = scaler.transform(X_test)
+
+    # Create datasets
+    train_dataset = BeeDataset_train(X_train, y_train)
+    test_dataset = BeeDataset_test(X_test)
+
+    # Create dataloaders
+    train_loader = DataLoader(dataset = train_dataset, batch_size=BATCH_SIZE, shuffle=True)
+    test_loader = DataLoader(dataset = test_dataset, batch_size=BATCH_SIZE, shuffle=False)
+
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    model = NN().to(device)
+
+    # Loss function and optimizer
+    criterion = nn.BCELoss()
+    optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
     
-    # Create a list of classifiers
-    classifiersNames = ['KNN', 'Decision Tree', 'Random Forest', 'SVM', 'Logistic Regression']
+    # Train the model
+    model.train()
+    for epoch in range(EPOCHS):
+        for i, (features, labels) in enumerate(train_loader):
+            features = features.to(device)
+            labels = labels.to(device)
 
-    classifiers = [ KNeighborsClassifier(n_neighbors=3),
-                    DecisionTreeClassifier(),
-                    RandomForestClassifier(n_estimators=100),
-                    SVC(),
-                    LogisticRegression() 
-                ]
-
-    # Train each classifier
-    for classifier in classifiers:
-        classifier.fit(X_train, y_train)
-
-    # Predict using each classifier
-    for classifier, name in zip(classifiers, classifiersNames):
-        y_pred = classifier.predict(X_test)
-        #print(y_pred)
-        #print(y_test)
-        print(name + ' : '+ str(classifier.score(X_test, y_test)))
+            # Forward pass
+            outputs = model(features)
+            loss = criterion(outputs, labels)
+        
+            # Backward and optimize
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+        
+            if (i+1) % 10 == 0:
+                print('Epoch [{}/{}], Step [{}/{}], Loss: {:.4f}'.format(epoch+1, EPOCHS, i+1, len(train_loader), loss.item()))
+        
+        
