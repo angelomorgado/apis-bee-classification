@@ -8,26 +8,26 @@ from torch.utils.data import Dataset, DataLoader
 #======================== Class that represents the dataset
 # This class is used to create a training dataset that can be used by the DataLoader class
 class BeeDataset_train(Dataset):
-    def __init__(self, X, y):
-        self.X = torch.tensor(X, dtype=torch.float32)
-        self.y = torch.tensor(y, dtype=torch.float32)
-
-    def __len__(self):
-        return len(self.X)
-
+    def __init__(self, X_data, y_data):
+        self.X_data = X_data
+        self.y_data = y_data
+        
     def __getitem__(self, index):
-        return self.X[index], self.y[index]
+        return self.X_data[index], self.y_data[index]
+        
+    def __len__ (self):
+        return len(self.X_data)
 
 # This class is used to create a testing dataset that can be used by the DataLoader class
 class BeeDataset_test(Dataset):
-    def __init__(self, X):
-        self.X = torch.tensor(X, dtype=torch.float32)
-
-    def __len__(self):
-        return len(self.X)
-
+    def __init__(self, X_data):
+        self.X_data = X_data
+        
     def __getitem__(self, index):
-        return self.X[index]
+        return self.X_data[index]
+        
+    def __len__ (self):
+        return len(self.X_data)
 
 #====================== Class that represents the neural network
 class NN(nn.Module):

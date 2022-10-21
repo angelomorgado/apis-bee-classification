@@ -39,6 +39,15 @@ def remove_outliers(data, threshold=0.5):
     # Return the new data
     return pd.concat([data_positives, data_negatives])
 
+def binary_acc(y_pred, y_test):
+    y_pred_tag = torch.round(torch.sigmoid(y_pred))
+
+    correct_results_sum = (y_pred_tag == y_test).sum().float()
+    acc = correct_results_sum/y_test.shape[0]
+    acc = torch.round(acc * 100)
+    
+    return acc
+
 if __name__ == "__main__":
     # Load dataset from csv file
     columnNames = ['mntcm', 'mxtwm', 'rfseas', 'tann', 'latitude', 'longitude', 'y']
@@ -62,6 +71,11 @@ if __name__ == "__main__":
     X_train = scaler.fit_transform(X_train)
     X_test = scaler.transform(X_test)
 
+    # Convert data to tensors
+    X_train = torch.FloatTensor(X_train)
+    X_test = torch.FloatTensor(X_test)
+    y_train = torch.FloatTensor(y_train.values)
+
     # Create datasets
     train_dataset = BeeDataset_train(X_train, y_train)
     test_dataset = BeeDataset_test(X_test)
@@ -79,21 +93,25 @@ if __name__ == "__main__":
     
     # Train the model
     model.train()
-    for epoch in range(EPOCHS):
-        for i, (features, labels) in enumerate(train_loader):
-            features = features.to(device)
-            labels = labels.to(device)
+    for epoch in range(1, EPOCHS + 1):
+        epoch_loss = 0
+        epoch_acc = 0
 
-            # Forward pass
-            outputs = model(features)
-            loss = criterion(outputs, labels)
-        
-            # Backward and optimize
+        for X_batch, y_batch in train_loader:
+            X_batch, y_batch = X_batch.to(device), y_batch.to(device)
             optimizer.zero_grad()
+
+            y_pred = model(X_batch)
+
+            loss = criterion(y_pred, y_batch.unsqueeze(1))
+            acc = binary_acc(y_pred, y_batch.unsqueeze(1))
+
             loss.backward()
             optimizer.step()
+
+            epoch_loss += loss.item()
+            epoch_acc += acc.item()
         
-            if (i+1) % 10 == 0:
-                print('Epoch [{}/{}], Step [{}/{}], Loss: {:.4f}'.format(epoch+1, EPOCHS, i+1, len(train_loader), loss.item()))
+        print(f'Epoch {epoch+0:03}: | Loss: {epoch_loss/len(train_loader):.5f} | Acc: {epoch_acc/len(train_loader):.3f}')
         
         
