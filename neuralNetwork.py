@@ -7,7 +7,6 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
-
 from classes import BeeDataset_train, BeeDataset_test, NN
 
 #======================== GLOBAL VARIABLES ============================================================
