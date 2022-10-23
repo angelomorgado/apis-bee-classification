@@ -107,7 +107,7 @@ if __name__ == "__main__":
         # Print loss every 10 epochs
         if (epoch+1) % 10 == 0:
             print(f'Epoch {epoch+1}/{EPOCHS} Loss: {loss.item():.4f}')
-    
+ 
     # Draw the loss graph
     '''plt.plot(range(EPOCHS), losses)
     plt.ylabel('Loss')
