@@ -1,3 +1,4 @@
+from fileinput import filename
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
@@ -43,6 +44,19 @@ def remove_outliers(data, threshold=20.0):
 
     # Return the new data
     return pd.concat([data_positives, data_negatives])
+
+# Plot histogram of the f1 scores of the classifiers
+def plot_f1_scores(classifiers, classifiersNames, X_test, y_test):
+    f1_scores = []
+
+    for classifier in classifiers:
+        y_pred = classifier.predict(X_test)
+        f1_scores.append(classification_report(y_test, y_pred, output_dict=True)['weighted avg']['f1-score'])
+
+    plt.figure()
+    plt.title("F1 Scores")
+    plt.bar(classifiersNames, f1_scores, color="r", align="center")
+    plt.savefig('F1Scores.png')
 
 # Plot the ROC curve
 def plot_roc_curve(classifiers, classifiersNames, X_test, y_test):
@@ -138,11 +152,20 @@ if __name__ == "__main__":
 
     # Evaluate each classifier using cross validation and f1 score
     skf = StratifiedKFold(n_splits=10, shuffle=True)
+
+    # Average score for each classifier
+    avgScores = []
+
     for classifier, name in zip(classifiers, classifiersNames):
         scores = cross_val_score(classifier, X, y, cv=skf) # cross_val_score returns the f1 score for each fold of the cross validation (10 folds) 
+        avgScores.append(scores.mean())
         print(name + ' : ' + str(scores.mean())) # Print the mean of the f1 scores
 
-    # TODO: Fazer histograma com os scores de cada classificador
+    # Plot the avgScores of the classifiers in a bar chart
+    plt.figure()
+    plt.title("Average F1 Scores")
+    plt.bar(classifiersNames, avgScores, color="r", align="center")
+    plt.savefig('AvgF1Scores.png')
 
     # Plot the ROC curve
     plot_roc_curve(classifiers, classifiersNames, X_test, y_test)
@@ -150,6 +173,7 @@ if __name__ == "__main__":
     # Chose the best classifier using f1 score
     bestClassifier = get_best_classifier(classifiers, classifiersNames, X_test, y_test)
     # TODO: Fazer histograma com os scores de cada classificador
+    plot_f1_scores(classifiers, classifiersNames, X_test, y_test)
 
     # Predict using the best classifier
     y_pred = bestClassifier.predict(X_test)
