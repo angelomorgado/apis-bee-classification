@@ -4,6 +4,9 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import confusion_matrix
 from sklearn.metrics import roc_curve, auc
+from sklearn.metrics import classification_report
+from sklearn.model_selection import StratifiedKFold
+from sklearn.model_selection import cross_val_score
 import matplotlib.pyplot as plt
 
 # Classifiers
@@ -12,6 +15,7 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.svm import SVC
 from sklearn.linear_model import LogisticRegression
+from sklearn.neural_network import MLPClassifier
 
 import rasterio
 from rasterio.plot import show
@@ -77,7 +81,7 @@ def get_best_classifier(classifiers, classifiersNames, X_test, y_test):
         y_pred = classifier.predict(X_test)
         score = classifier.score(X_test, y_test)
 
-        if score > bestScore:
+        if score >= bestScore:
             bestClassifier = classifier
             bestClassifierName = name
             bestScore = score
@@ -87,15 +91,10 @@ def get_best_classifier(classifiers, classifiersNames, X_test, y_test):
     return bestClassifier
 
 # Plot the confusion matrix
-def plot_confusion_matrix(classifier, X_test, y_test):
+def plot_cf(classifier, X_test, y_test):
     # Compute confusion matrix
-    cnf_matrix = confusion_matrix(y_test, classifier.predict(X_test))
-    np.set_printoptions(precision=2)
-
-    # Plot non-normalized confusion matrix
-    plt.figure()
-
-
+    # Plot cnf matrix without normalization using ConfusionMatrixDisplay.from_estimator
+    # TODO:VER SE É PRECISO
     plt.savefig('ConfusionMatrix.png')
     
 #============================================================ MAIN ============================================================
@@ -114,8 +113,8 @@ if __name__ == "__main__":
     # Deal with missing values in dataset (replace with mean)
     X = X.fillna(X.mean())
 
-    # Split dataset into training and testing using cross validation    
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=0)
+    # Split the dataset randomly into training and testing using cross validation
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
 
     # Standardize features values to be between 0 and 1 (for better performance)
     scaler = StandardScaler()
@@ -123,23 +122,25 @@ if __name__ == "__main__":
     X_test = scaler.transform(X_test)
     
     # Create a list of classifiers
-    classifiersNames = ['KNN', 'Decision Tree', 'Random Forest', 'SVM', 'Logistic Regression']
+    classifiersNames = ['KNN', 'Decision Tree', 'Random Forest', 'SVM', 'Logistic Regression', 'Multilayer Perceptron']
 
     classifiers = [ KNeighborsClassifier(n_neighbors=3),
                     DecisionTreeClassifier(),
                     RandomForestClassifier(n_estimators=100),
                     SVC(),
-                    LogisticRegression() 
+                    LogisticRegression(),
+                    MLPClassifier(hidden_layer_sizes=(100, 100, 100), max_iter=1000)
                 ]
 
     # Train each classifier
     for classifier in classifiers:
         classifier.fit(X_train, y_train)
 
-    # Predict using each classifier
+    # Evaluate each classifier using cross validation and f1 score (to avoid overfitting)
+    skf = StratifiedKFold(n_splits=10, shuffle=True)
     for classifier, name in zip(classifiers, classifiersNames):
-        y_pred = classifier.predict(X_test)
-        print(name + ' : '+ str(classifier.score(X_test, y_test)))
+        scores = cross_val_score(classifier, X, y, cv=skf) # cross_val_score returns the f1 score for each fold of the cross validation (10 folds) 
+        print(name + ' : ' + str(scores.mean())) # Print the mean of the f1 scores
 
     # Plot the ROC curve
     plot_roc_curve(classifiers, classifiersNames, X_test, y_test)
@@ -147,5 +148,7 @@ if __name__ == "__main__":
     # Chose the best classifier using f1 score
     bestClassifier = get_best_classifier(classifiers, classifiersNames, X_test, y_test)
 
-    # Plot the confusion matrix for the best classifier
-    plot_confusion_matrix(bestClassifier, X_test, y_test)
+    # Predict using the best classifier
+    y_pred = bestClassifier.predict(X_test)
+
+    print(classification_report(y_test, y_pred))
