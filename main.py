@@ -117,8 +117,18 @@ if __name__ == "__main__":
     columnNames = ['mntcm', 'mxtwm', 'rfseas', 'tann', 'latitude', 'longitude', 'y']
     data = pd.read_csv('dataset_bees.csv', names=columnNames)
 
+    # Plot the data based on the latitude and longitude
+    plt.figure()
+    plt.scatter(data['latitude'], data['longitude'], c=data['y'])
+    plt.savefig('data_before_balancing.png')
+
     # Remove outliers
     data = remove_outliers(data, 23.0)
+
+    # Plot the data based on the latitude and longitude
+    plt.figure()
+    plt.scatter(data['latitude'], data['longitude'], c=data['y'])
+    plt.savefig('data_after_balancing.png')
 
     # Deal with missing values in dataset (replace with mean value of rows with the same y (label) value)) 
     data = data.fillna(data.groupby('y').transform('mean'))
